@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매출 분석 대시보드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS CDN (Excel 파일 읽기용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-blue-600"></i> 매출 분석 대시보드
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">엑셀 및 CSV 데이터를 업로드하고 날짜별로 정교하게 분석하세요.</p>
+            </div>
+            
+            <!-- File Upload Button -->
+            <div>
+                <label for="fileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium text-sm flex items-center gap-2 transition shadow-sm">
+                    <i class="fa-solid fa-file-import"></i> 엑셀/CSV 파일 업로드
+                </label>
+                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden">
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-slate-400"></i> 데이터 필터링
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                <!-- 년 선택 -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">년도</label>
+                    <select id="yearFilter" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">전체 년도</option>
+                    </select>
+                </div>
+                <!-- 월 선택 -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">월</label>
+                    <select id="monthFilter" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">전체 월</option>
+                    </select>
+                </div>
+                <!-- 일 선택 -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">일</label>
+                    <select id="dayFilter" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">전체 일</option>
+                    </select>
+                </div>
+                <!-- 점포 선택 -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">점포</label>
+                    <select id="storeFilter" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">전체 점포</option>
+                    </select>
+                </div>
+                <!-- 카테고리 선택 -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">카테고리</label>
+                    <select id="categoryFilter" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ALL">전체 카테고리</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-medium text-slate-500">총 매출액</p>
+                <p class="text-2xl font-bold text-slate-900 mt-2" id="kpiSales">0 원</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-medium text-slate-500">총 판매수량</p>
+                <p class="text-2xl font-bold text-blue-600 mt-2" id="kpiQty">0 개</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-medium text-slate-500">총 할인액</p>
+                <p class="text-2xl font-bold text-rose-500 mt-2" id="kpiDiscount">0 원</p>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <p class="text-xs font-medium text-slate-500">행사 적용 건수</p>
+                <p class="text-2xl font-bold text-emerald-600 mt-2" id="kpiPromo">0 건</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-base font-semibold text-slate-800 mb-4">일자별 매출 추이</h3>
+                <div class="h-64">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 class="text-base font-semibold text-slate-800 mb-4">카테고리별 매출 비중</h3>
+                <div class="h-64 flex items-center justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-base font-semibold text-slate-800">상세 내역</h3>
+                <span class="text-xs text-slate-500" id="rowCount">총 0건</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-3">일자</th>
+                            <th class="px-6 py-3">점포</th>
+                            <th class="px-6 py-3">카테고리</th>
+                            <th class="px-6 py-3">상품코드</th>
+                            <th class="px-6 py-3">상품명</th>
+                            <th class="px-6 py-3 text-right">판매수량</th>
+                            <th class="px-6 py-3 text-right">정상단가</th>
+                            <th class="px-6 py-3 text-right">할인액</th>
+                            <th class="px-6 py-3 text-right">매출액</th>
+                            <th class="px-6 py-3 text-center">행사적용</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Table rows generated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 샘플 초기 데이터
+        let sampleData = [
+            { date: "2026-08-01", store: "센트럴점", category: "냉장 간편식", code: "RM-101", name: "한끼 소불고기덮밥", qty: 44, price: 5900, discount: 0, sales: 259600, promo: "N" },
+            { date: "2026-08-01", store: "센트럴점", category: "냉장 간편식", code: "RM-102", name: "매콤 닭갈비볶음", qty: 49, price: 5500, discount: 0, sales: 269500, promo: "N" },
+            { date: "2026-08-02", store: "강남점", category: "냉장 간편식", code: "RM-101", name: "한끼 소불고기덮밥", qty: 30, price: 5900, discount: 5000, sales: 172000, promo: "Y" },
+            { date: "2026-08-02", store: "센트럴점", category: "음료", code: "DR-201", name: "아이스 아메리카노", qty: 120, price: 3000, discount: 0, sales: 360000, promo: "N" },
+            { date: "2026-08-03", store: "홍대점", category: "베이커리", code: "BK-301", name: "크림 단팥빵", qty: 65, price: 2500, discount: 25000, sales: 137500, promo: "Y" }
+        ];
+
+        let rawData = [...sampleData];
+        let trendChartObj = null;
+        let categoryChartObj = null;
+
+        // 날짜 파싱 및 YYYY년 MM월 DD일 변환 함수
+        function parseFormattedDate(val) {
+            if (!val) return { raw: '', year: '', month: '', day: '', display: '-' };
+            
+            let dateObj = null;
+
+            // Excel Serial Number 처리
+            if (typeof val === 'number') {
+                dateObj = XLSX.SSF.parse_date_code(val);
+                if (dateObj) {
+                    const y = dateObj.y.toString();
+                    const m = String(dateObj.m).padStart(2, '0');
+                    const d = String(dateObj.d).padStart(2, '0');
+                    return {
+                        raw: `${y}-${m}-${d}`,
+                        year: y,
+                        month: m,
+                        day: d,
+                        display: `${y}년 ${m}월 ${d}일`
+                    };
+                }
+            }
+
+            let str = String(val).trim();
+            // 숫자 및 특수문자 추출
+            const matches = str.match(/\d+/g);
+
+            if (matches && matches.length >= 3) {
+                const y = matches[0];
+                const m = String(matches[1]).padStart(2, '0');
+                const d = String(matches[2]).padStart(2, '0');
+                return {
+                    raw: `${y}-${m}-${d}`,
+                    year: y,
+                    month: m,
+                    day: d,
+                    display: `${y}년 ${m}월 ${d}일`
+                };
+            } else if (str.length === 8 && !isNaN(str)) { // YYYYMMDD
+                const y = str.substring(0, 4);
+                const m = str.substring(4, 6);
+                const d = str.substring(6, 8);
+                return {
+                    raw: `${y}-${m}-${d}`,
+                    year: y,
+                    month: m,
+                    day: d,
+                    display: `${y}년 ${m}월 ${d}일`
+                };
+            }
+
+            return { raw: str, year: '', month: '', day: '', display: str };
+        }
+
+        // 초기화
+        window.addEventListener('DOMContentLoaded', () => {
+            initData(rawData);
+            setupEventListeners();
+        });
+
+        function initData(data) {
+            // 날짜 데이터 표준화
+            rawData = data.map(item => {
+                const parsedDate = parseFormattedDate(item.date);
+                return {
+                    ...item,
+                    parsedDate: parsedDate
+                };
+            });
+
+            populateFilterDropdowns();
+            renderDashboard();
+        }
+
+        // 드롭다운 옵션 동적 생성
+        function populateFilterDropdowns() {
+            const years = new Set();
+            const months = new Set();
+            const days = new Set();
+            const stores = new Set();
+            const categories = new Set();
+
+            rawData.forEach(item => {
+                if (item.parsedDate.year) years.add(item.parsedDate.year);
+                if (item.parsedDate.month) months.add(item.parsedDate.month);
+                if (item.parsedDate.day) days.add(item.parsedDate.day);
+                if (item.store) stores.add(item.store);
+                if (item.category) categories.add(item.category);
+            });
+
+            updateSelectOptions('yearFilter', Array.from(years).sort(), '년');
+            updateSelectOptions('monthFilter', Array.from(months).sort(), '월');
+            updateSelectOptions('dayFilter', Array.from(days).sort(), '일');
+            updateSelectOptions('storeFilter', Array.from(stores).sort());
+            updateSelectOptions('categoryFilter', Array.from(categories).sort());
+        }
+
+        function updateSelectOptions(elementId, items, suffix = '') {
+            const select = document.getElementById(elementId);
+            const currentVal = select.value;
+            
+            // 첫 번째 옵션(전체) 유지
+            const firstOption = select.options[0];
+            select.innerHTML = '';
+            select.appendChild(firstOption);
+
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = `${item}${suffix}`;
+                select.appendChild(opt);
+            });
+
+            if (items.includes(currentVal)) {
+                select.value = currentVal;
+            } else {
+                select.value = 'ALL';
+            }
+        }
+
+        function setupEventListeners() {
+            ['yearFilter', 'monthFilter', 'dayFilter', 'storeFilter', 'categoryFilter'].forEach(id => {
+                document.getElementById(id).addEventListener('change', renderDashboard);
+            });
+
+            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        }
+
+        // 필터링 적용
+        function getFilteredData() {
+            const yearVal = document.getElementById('yearFilter').value;
+            const monthVal = document.getElementById('monthFilter').value;
+            const dayVal = document.getElementById('dayFilter').value;
+            const storeVal = document.getElementById('storeFilter').value;
+            const categoryVal = document.getElementById('categoryFilter').value;
+
+            return rawData.filter(item => {
+                const matchYear = yearVal === 'ALL' || item.parsedDate.year === yearVal;
+                const matchMonth = monthVal === 'ALL' || item.parsedDate.month === monthVal;
+                const matchDay = dayVal === 'ALL' || item.parsedDate.day === dayVal;
+                const matchStore = storeVal === 'ALL' || item.store === storeVal;
+                const matchCategory = categoryVal === 'ALL' || item.category === categoryVal;
+
+                return matchYear && matchMonth && matchDay && matchStore && matchCategory;
+            });
+        }
+
+        // 대시보드 렌더링
+        function renderDashboard() {
+            const filtered = getFilteredData();
+
+            updateKPIs(filtered);
+            renderTable(filtered);
+            renderCharts(filtered);
+        }
+
+        function updateKPIs(data) {
+            const totalSales = data.reduce((acc, cur) => acc + (Number(cur.sales) || 0), 0);
+            const totalQty = data.reduce((acc, cur) => acc + (Number(cur.qty) || 0), 0);
+            const totalDiscount = data.reduce((acc, cur) => acc + (Number(cur.discount) || 0), 0);
+            const promoCount = data.filter(item => String(item.promo).toUpperCase() === 'Y').length;
+
+            document.getElementById('kpiSales').textContent = totalSales.toLocaleString() + ' 원';
+            document.getElementById('kpiQty').textContent = totalQty.toLocaleString() + ' 개';
+            document.getElementById('kpiDiscount').textContent = totalDiscount.toLocaleString() + ' 원';
+            document.getElementById('kpiPromo').textContent = promoCount.toLocaleString() + ' 건';
+            document.getElementById('rowCount').textContent = `총 ${data.length}건`;
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-slate-400">조회된 데이터가 없습니다.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-slate-900">${item.parsedDate.display}</td>
+                    <td class="px-6 py-4">${item.store || '-'}</td>
+                    <td class="px-6 py-4">${item.category || '-'}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">${item.code || '-'}</td>
+                    <td class="px-6 py-4">${item.name || '-'}</td>
+                    <td class="px-6 py-4 text-right">${(Number(item.qty)||0).toLocaleString()}</td>
+                    <td class="px-6 py-4 text-right">${(Number(item.price)||0).toLocaleString()} 원</td>
+                    <td class="px-6 py-4 text-right text-rose-500">${(Number(item.discount)||0).toLocaleString()} 원</td>
+                    <td class="px-6 py-4 text-right font-semibold text-slate-900">${(Number(item.sales)||0).toLocaleString()} 원</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full ${String(item.promo).toUpperCase() === 'Y' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">
+                            ${item.promo || 'N'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderCharts(data) {
+            // 1. 일자별 매출 추이
+            const salesByDate = {};
+            data.forEach(item => {
+                const label = item.parsedDate.display;
+                salesByDate[label] = (salesByDate[label] || 0) + (Number(item.sales) || 0);
+            });
+
+            const dateLabels = Object.keys(salesByDate);
+            const salesValues = Object.values(salesByDate);
+
+            if (trendChartObj) trendChartObj.destroy();
+            const ctx1 = document.getElementById('trendChart').getContext('2d');
+            trendChartObj = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: dateLabels,
+                    datasets: [{
+                        label: '매출액 (원)',
+                        data: salesValues,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // 2. 카테고리별 매출 비중
+            const salesByCategory = {};
+            data.forEach(item => {
+                const cat = item.category || '기타';
+                salesByCategory[cat] = (salesByCategory[cat] || 0) + (Number(item.sales) || 0);
+            });
+
+            if (categoryChartObj) categoryChartObj.destroy();
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            categoryChartObj = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(salesByCategory),
+                    datasets: [{
+                        data: Object.values(salesByCategory),
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#64748b']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // 파일 업로드 처리 (Excel / CSV)
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                // 업로드된 데이터 키 매핑
+                const uploadedData = json.map(row => ({
+                    date: row['일자'] || row['날짜'] || row['Date'] || '',
+                    store: row['점포'] || row['점포명'] || row['Store'] || '',
+                    category: row['카테고리'] || row['Category'] || '',
+                    code: row['상품코드'] || row['Code'] || '',
+                    name: row['상품명'] || row['Name'] || '',
+                    qty: row['판매수량'] || row['수량'] || row['Qty'] || 0,
+                    price: row['정상단가'] || row['단가'] || row['Price'] || 0,
+                    discount: row['할인액'] || row['Discount'] || 0,
+                    sales: row['매출액'] || row['Sales'] || 0,
+                    promo: row['행사적용'] || row['행사'] || 'N'
+                }));
+
+                if (uploadedData.length > 0) {
+                    initData(uploadedData);
+                    alert(`총 ${uploadedData.length}건의 데이터를 성공적으로 불러왔습니다.`);
+                } else {
+                    alert('불러올 수 있는 데이터가 없습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
